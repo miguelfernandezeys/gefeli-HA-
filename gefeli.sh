@@ -1,4 +1,7 @@
-#!bin/sh
+#!/bin/sh
+
+#####MEDIA HORA PERDIDA POR LA FALTA DEL PATH DEL SHEBANG
+
 #DECLARACIÓN DE VARIABLES
 FILEHOST=/etc/hosts
 
@@ -26,29 +29,41 @@ done
 k=0
 
 while [ $k -le ${#hosts[@]} ];do
-  scp -"$FILEHOST" root@${hosts[$k]}:/etc/
-  ssh root@${hosts[$k]} "yum -y update | firewall-cmd --zone=public --permanent --add-port=3306/tcp | firewall-cmd --reload | > /etc/yum.repos.d/MariaDB.repo"
-  ssh root@${hosts[$k]} 'echo "
-# MariaDB 10.0 CentOS repository list - created 2017-08-04 03:32 UTC
+scp -"$FILEHOST" root@${hosts[$k]}:/etc/
+ssh root@${hosts[$k]} "sudo yum groupinstall 'Development Tools'"
+ssh root@${hosts[$k]} "sed 's/\SELINUX=enforcing/SELINUX=disabled/g -i ~/etc/selinux/conf'"
+ssh root@${hosts[$k]} "sudo yum -y update"
+ssh root@${hosts[$k]} "sudo firewall-cmd --zone=public --permanent --add-port=3306/tcp"
+ssh root@${hosts[$k]} "sudo firewall-cmd --reload"
+ssh root@${hosts[$k]} "> /etc/yum.repos.d/MariaDB.repo"
+  
+ssh root@${hosts[$k]} 'echo "
+# MariaDB 10.1 CentOS repository list - created 2017-08-04 03:32 UTC
 # http://downloads.mariadb.org/mariadb/repositories/
 [mariadb]
 name = MariaDB
-baseurl = http://yum.mariadb.org/10.0/centos7-amd64
-gpgkey=https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
-gpgcheck=1
+baseurl = http://yum.mariadb.org/10.1/centos7-amd64
+gpgkey = https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+gpgcheck = 1
 " >> /etc/yum.repos.d/MariaDB.repo'
-  ssh root@${hosts[$k]} "cat /etc/yum.repos.d/MariaDB.repo"
+ssh root@${hosts[$k]} "cat /etc/yum.repos.d/MariaDB.repo"
   
-  ssh root@${hosts[$k]} "yum -y install MariaDB-server MariaDB-client rsync"
-  ssh root@${hosts[$k]} "systemctl enable mysql"
+ssh root@${hosts[$k]} "yum -y install MariaDB-server MariaDB-client"
+ssh root@${hosts[$k]} "systemctl enable mariadb.service"
+ssh root@${hosts[$k]} "mysql_secure_installation"
+
+#Configuración de demonio
+ssh root@${hosts[$k]} "sed 's/\[mysqld]/[mysqld]\nserver-id=10\nlog-bin=mysql-bin/g' -i /etc/my.cnf.d/server.cnf"
+ssh root@${hosts[$k]} "systemctl start mariadb.service"
   
-  #Configuración de demonio
-  ssh root@${hosts[$k]} "sed 's/\[mysqld]/[mysqld]\nserver-id=10\nlog-bin=mysql-bin/g' -i /etc/my.cnf.d/server.cnf"
-  ssh root@${hosts[$k]} "systemctl start mysql"
-  
-  #binlog y posición para replicación 
-  ssh root@${hosts[$k]} "bin=$(mysql -e 'show master status;' | tail -n 1 | awk {'print $1'})"
-  ssh root@${hosts[$k]} "pos=$(mysql -e "show master status;" | tail -n 1 | awk {'print $2'})"
+#binlog y posición para replicación 
+bin=$(ssh root@192.168.56.104 'mysql -e "show master status;" | tail -n 1')
+bin=$(echo $bin | awk {'print $1'})
+#echo $bin
+pos=$(ssh root@192.168.56.104 "mysql -e 'show master status;' | tail -n 1")
+pos=$(echo $pos | awk {'print $2'})
+#echo $pos
+
 done
 
 sleep 4
