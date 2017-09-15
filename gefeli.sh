@@ -7,6 +7,7 @@ FILEHOST=/etc/hosts
 
 file="./nodos.properties"
 
+
 if [ -f "$file" ];
 
 then
@@ -106,9 +107,120 @@ ssh root@${hosts[$k]} "rpm -i maxscale-2.1.6-1.rhel.7.x86_64.rpm"
 ssh root@${hosts[$k]} "systemctl enable maxscale.service"
 
 ## FALTAN LAS CONFIGS DE MAXSCALE.CNF
-ssh root@${hosts[$k]} "systemctl start maxscale.service"
-ssh root@${hosts[$k]} "sudo pcs resource create clusterip ocf:heartbeat:IPaddr2 ip=192.168.56.120 cidr_netmask=24 op monitor interval=20s" 
+ssh root@${hosts[$k]} "mv /etc/maxscale.cnf /etc/maxscale.cnf.bck "
+ssh root@${hosts[$k]} "> /etc/maxscale.cnf"
+ssh root@${hosts[$k]} 'echo "
+# MaxScale documentation on GitHub:
+# https://github.com/mariadb-corporation/MaxScale/blob/2.1/Documentation/Documentation-Contents.md
 
+# Global parameters
+#
+# Complete list of configuration options:
+# https://github.com/mariadb-corporation/MaxScale/blob/2.1/Documentation/Getting-Started/Configuration-Guide.md
+
+[maxscale]
+threads=2
+
+# Server definitions
+#
+# Set the address of the server to the network
+# address of a MySQL server.
+#
+
+[server1]
+type=server
+address=${hosts[0]}
+port=3306
+protocol=MySQLBackend
+
+[server2]
+type=server
+address=${hosts[1]}
+port=3306
+protocol=MySQLBackend
+
+# Monitor for the servers
+#
+# This will keep MaxScale aware of the state of the servers.
+# MySQL Monitor documentation:
+# https://github.com/mariadb-corporation/MaxScale/blob/2.1/Documentation/Monitors/MySQL-Monitor.md
+
+[MySQL Monitor]
+type=monitor
+module=mysqlmon
+servers=server1
+user=glpi	
+passwd=glpi
+monitor_interval=10000
+
+# Service definitions
+#
+# Service Definition for a read-only service and
+# a read/write splitting service.
+#
+
+# ReadConnRoute documentation:
+# https://github.com/mariadb-corporation/MaxScale/blob/2.1/Documentation/Routers/ReadConnRoute.md
+
+[Read-Only Service]
+type=service
+router=readconnroute
+servers=server2
+user=glpi	
+passwd=glpi
+router_options=slave
+
+# ReadWriteSplit documentation:
+# https://github.com/mariadb-corporation/MaxScale/blob/2.1/Documentation/Routers/ReadWriteSplit.md
+
+[Read-Write Service]
+type=service
+router=readwritesplit
+servers=server1,server2
+user=glpi	
+passwd=glpi
+max_slave_connections=100%
+
+# This service enables the use of the MaxAdmin interface
+# MaxScale administration guide:
+# https://github.com/mariadb-corporation/MaxScale/blob/2.1/Documentation/Reference/MaxAdmin.md
+
+[MaxAdmin Service]
+type=service
+router=cli
+
+# Listener definitions for the services
+#
+# These listeners represent the ports the
+# services will listen on.
+#
+
+[Read-Only Listener]
+type=listener
+service=Read-Only Service
+protocol=MySQLClient
+port=4008
+
+[Read-Write Listener]
+type=listener
+service=Read-Write Service
+protocol=MySQLClient
+port=4006
+
+[MaxAdmin Listener]
+type=listener
+service=MaxAdmin Service
+protocol=maxscaled
+socket=default
+" >> /etc/maxscale.cnf'
+
+ssh root@${hosts[$k]} "systemctl start maxscale.service"
+ssh root@${hosts[$k]} "sudo pcs resource create clusterip ocf:heartbeat:IPaddr2 ip=$dynamic_ip cidr_netmask=24 op monitor interval=20s" 
+ssh root@${hosts[$k]} "sudo pcs resource create maxscale systemd:maxscale op monitor interval=1s "
+ssh root@${hosts[$k]} "sudo pcs resource clone maxscale"
+ssh root@${hosts[$k]} "pcs resource meta clusterip migración-threshold = 1 failure-timeout = 60s resource-stickiness = 100
+pcs meta maxscale-clone migration-threshold = 1 fallo-timeout = 60s resource-stickiness = 100"
+ssh root@${hosts[$k]} "sudo pcs constraint colocation agregar clusterip con maxscale-clone INFINITY"
 
 
 
