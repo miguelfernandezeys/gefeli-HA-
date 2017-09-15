@@ -57,12 +57,12 @@ ssh root@${hosts[$k]} "sed 's/\[mysqld]/[mysqld]\nserver-id=10\nlog-bin=mysql-bi
 ssh root@${hosts[$k]} "systemctl start mariadb.service"
   
 #binlog y posición para replicación 
-bin=$(ssh root@192.168.56.104 'mysql -e "show master status;" | tail -n 1')
-bin=$(echo $bin | awk {'print $1'})
-#echo $bin
-pos=$(ssh root@192.168.56.104 "mysql -e 'show master status;' | tail -n 1")
-pos=$(echo $pos | awk {'print $2'})
-#echo $pos
+bin=$(ssh root@${hosts[$k]} 'mysql -e "show master status;" | tail -n 1')
+arrayBin=$((echo $bin | awk {'print $1'}))
+#echo $arrayBin
+pos=$(ssh root@${hosts[$k]} "mysql -e 'show master status;' | tail -n 1")
+arrayPos=$((echo $pos | awk {'print $2'})
+#echo $arrayPos
 
 done
 
