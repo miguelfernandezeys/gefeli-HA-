@@ -57,7 +57,7 @@ gpgcheck = 1
 " >> /etc/yum.repos.d/MariaDB.repo'
 ssh root@${hosts[$k]} "cat /etc/yum.repos.d/MariaDB.repo"
   
-ssh root@${hosts[$k]} "yum -y install MariaDB-server MariaDB-client rsync"
+ssh root@${hosts[$k]} "yum -y install MariaDB-server MariaDB-client rsync wget"
 echo "MariaDb Server y Cliente instalados"
 ssh root@${hosts[$k]} "systemctl enable mariadb.service"
 echo "servicio mariadb habilitado"
