@@ -1,7 +1,5 @@
 #!/bin/sh
 
-#####MEDIA HORA PERDIDA POR LA FALTA DEL PATH DEL SHEBANG
-
 #DECLARACIÓN DE VARIABLES
 FILEHOST=/etc/hosts
 
@@ -83,19 +81,38 @@ binMaster1 , master_log_pos=posMaster1; ; FLUSH PRIVILEGES; FLUSH TABLES WITH RE
 
 fi
 
+ssh root@{hosts[$k]} "mysql --user=root <<_EOF"
+############################## CONFIGURACIÓN DE CLUSTER ############################
+ssh root@${hosts[$k]} "sudo firewall-cmd --zone=public --permanent --add-port=5404/tcp"
+ssh root@${hosts[$k]} "sudo firewall-cmd --zone=public --permanent --add-port=5405/tcp"
+ssh root@${hosts[$k]} "sudo firewall-cmd --zone=public --permanent --add-port=2224/udp"
+ssh root@${hosts[$k]} "yum install corosync pcs pacemaker"
+ssh root@${hosts[$k]} "systemctl enable pcsd.servicer"
+ssh root@${hosts[$k]} "systemctl enable pacemaker.service"
+ssh root@${hosts[$k]} "systemctl enable corosync.service"
+ssh root@${hosts[$k]} "systemctl start pcsd.service"
+ssh root@${hosts[$k]} "pcs cluster setup --local --name gefeliDBCluster master1 master2"
+ssh root@${hosts[$k]} "systemctl start pacemaker.service"
+ssh root@${hosts[$k]} "systemctl start corosync.service"
+ssh root@${hosts[$k]} "passwd hacluster"
+ssh root@${hosts[$k]} "pcs cluster auth master1 master2"
+ssh root@${hosts[$k]} "pcs cluster start --all"
+ssh root@${hosts[$k]} "pcs status cluster"
+ssh root@${hosts[$k]} "pcs status nodes"
+ssh root@${hosts[$k]} "pcs status corosync"
+ssh root@${hosts[$k]} "pcs property set stonith-enabled=false"
+ssh root@${hosts[$k]} "wget https://downloads.mariadb.com/MaxScale/2.1.6/rhel/7/x86_64/maxscale-2.1.6-1.rhel.7.x86_64.rpm"
+ssh root@${hosts[$k]} "rpm -i maxscale-2.1.6-1.rhel.7.x86_64.rpm"
+ssh root@${hosts[$k]} "systemctl enable maxscale.service"
+
+## FALTAN LAS CONFIGS DE MAXSCALE.CNF
+ssh root@${hosts[$k]} "systemctl start maxscale.service"
+ssh root@${hosts[$k]} "sudo pcs resource create clusterip ocf:heartbeat:IPaddr2 ip=192.168.56.120 cidr_netmask=24 op monitor interval=20s" 
+
+
+
+
 let k = k + 1
 
 done
-sleep 4
 
-#mysql_secure_installation configuración y creación de usuario de replicación
-mysql --user=root <<_EOF
-UPDATE mysql.user SET Password=PASSWORD("$SQL_PASSWORD") WHERE User='root';
-DELETE FROM mysql.user WHERE User='';
-DROP DATABASE IF EXISTS test;
-DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
-CREATE USER 'reply'@'%' IDENTIFIED BY 'password';
-GRANT REPLICATION SLAVE ON *.* TO 'reply'@'%' IDENTIFIED BY 'password';
-FLUSH TABLES WITH READ LOCK;
-FLUSH PRIVILEGES;
-_EOF
