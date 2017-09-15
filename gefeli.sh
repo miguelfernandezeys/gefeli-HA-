@@ -32,7 +32,7 @@ posMaster1 = 0
 
 #itera para cada uno de los hosts la configuración y despliegue de base de datos MARIADB en cluster
 while [ $k -le ${#hosts[@]} ];do
-echo "comienza configuracion del host: " ${#hosts[@]}
+echo "comienza configuracion del host: " ${hosts[@]}
 scp -"$FILEHOST" root@${hosts[$k]}:/etc/
 echo "Copia del archivo " $FILEHOST "en el host: " ${hosts[$k]}
 ssh root@${hosts[$k]} "sudo yum groupinstall 'Development Tools'"
