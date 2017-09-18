@@ -67,45 +67,124 @@ echo "servicio mariadb habilitado"
 if [  ${dns[k]} = "master1" ];
 then
 echo "INICIA LA CONFIGURACION DEL MASTER 1"
+
+sleep 3
+
 ssh root@${hosts[$k]} "sed 's/\[mysqld]/[mysqld]\nserver-id=10\nlog-bin=mysql-bin/g' -i /etc/my.cnf.d/server.cnf"
+
 echo "archivo server.cnf modificado"
+
+sleep 3
+
 ssh root@${hosts[$k]} "systemctl start mariadb.service"
+
 echo "inicia el servicio de MariaDB"
-ssh root@{hosts[$k]} "mysql -e 'CREATE USER "reply"@"%" IDENTIFIED BY "reply"; GRANT REPLICATION SLAVE ON *.* TO "reply"@"%" IDENTIFIED BY "reply"; FLUSH PRIVILEGES; FLUSH TABLES WITH READ LOCK;'"
+
+sleep 3
+
+ssh root@${hosts[$k]} "mysql --user=root <<_EOF
+CREATE USER 'reply'@'%' IDENTIFIED BY 'password';
+GRANT REPLICATION SLAVE ON *.* TO 'reply'@'%' IDENTIFIED BY 'password';
+FLUSH PRIVILEGES;
+FLUSH TABLES WITH READ LOCK;
+_EOF
+"
 echo "Usuario reply creado"
+
+sleep 3
+
 ssh root@{hosts[$k]} "systemctl restart mariadb.service"
 echo "Reinicio del servicio MariaDB"
+
+sleep 2
+
 #binlog y posición para replicación
 bin=$(ssh root@${hosts[0]} 'mysql -e "show master status;" | tail -n 1')
 binMaster1=$(echo $bin | awk {'print $1'})
 pos=$(ssh root@${hosts[0]} "mysql -e 'show master status;' | tail -n 1")
 posMaster1=$(echo $pos | awk {'print $2'})
 echo "Variables POS: " $posMaster1 "y BIN: " $binMaster1
+
+sleep 2
+
 ssh root@{hosts[$k]} "mysqldump mysql > mysql-db.sql"
+
 echo "Export de base de datos creado"
+
+sleep 2
+
 ssh root@{hosts[$k]} "rsync -Pazxvl mysql-db.sql root@{hosts[$k]}:/root/"
+
 echo "Copiar archivo mysql_db.sql a cada uno de los hosts"
-ssh root@{hosts[$k]} "root@{hosts[$k]}:/root/"
-ssh root@{hosts[$k]} "mysql -e 'unlock tables; stop slave; change master to master_host= '{hosts[1]}' , master_user='reply', master_password='reply', master_log_file= 
-binMaster1 , master_log_pos=posMaster1; start slave; CREATE DATABASE glpi; CREATE USER "glpi"@"%" IDENTIFED BY "glpi"; GRANT ALL PRIVILEGES ON glpi TO "glpi"@"%" ; FLUSH PRIVILEGES; '"
+
+sleep 2
+
+ssh root@{hosts[$k]} "
+mysql --user=root <<_EOF
+unlock tables;
+stop slave;
+change master to master_host= '{hosts[1]}' , master_user='reply', master_password='reply', master_log_file=binMaster1 , master_log_pos=posMaster1;
+start slave;
+_EOF
+"
 echo "Configuración del Master host usuario de glpi creado"
-ssh root@{hosts[$k]} "glpi < glpi.sql"
-echo "base de datos restaurada"
-ssh root@{hosts[$k]} "chmod +x scriptgefeli.sh"
-echo "permisos de ejecución de scriptgefeli.sh"
-ssh root@{hosts[$k]} "./scriptgefeli.sh"
-echo "ejecución de scriptgefeli.sh"
+
+sleep 2
+
 else
 echo "INICIA LA CONFIGURACION DEL MASTER 2"
+
 ssh root@${hosts[$k]} "sed 's/\[mysqld]/[mysqld]\nserver-id=20\nlog-bin=mysql-bin/g' -i /etc/my.cnf.d/server.cnf"
+
 echo "archivo server.cnf configurado"
+
+sleep 2
+
 ssh root@${hosts[$k]} "systemctl start mariadb.service"
+
 echo "MariaDB reiniciado"
+
+sleep 2
+
 ssh root@{hosts[$k]} "mysql < mysql-db.sql"
+
 echo "Base de datos Importada"
-ssh root@{hosts[$k]} "mysql -e 'stop slave; change master to master_host= '{hosts[0]}' , master_user='reply', master_password='reply', master_log_file= 
-binMaster1 , master_log_pos=posMaster1; ; FLUSH PRIVILEGES; FLUSH TABLES WITH READ LOCK; start slave; show slave status'"
+
+sleep 2 
+
+ssh root@{hosts[$k]} "
+mysql --user=root <<_EOF
+unlock tables;
+stop slave;
+change master to master_host= '{hosts[0]}' , master_user='reply', master_password='reply', master_log_file=binMaster1 , master_log_pos=posMaster1;
+start slave;
+CREATE DATABASE glpi;
+CREATE USER "glpi"@"%" IDENTIFED BY "glpi";
+GRANT ALL PRIVILEGES ON glpi TO "glpi"@"%";
+FLUSH PRIVILEGES;
+FLUSH TABLES WITH READ LOCK;
+_EOF
+"
+
 echo "Master host configurado"
+
+sleep 2 
+
+ssh root@{hosts[$k]} "glpi < glpi.sql"
+
+echo "base de datos restaurada"
+
+sleep 2
+
+ssh root@{hosts[$k]} "chmod +x scriptgefeli.sh"
+
+echo "permisos de ejecución de scriptgefeli.sh"
+
+sleep 2
+
+ssh root@{hosts[$k]} "./scriptgefeli.sh"
+
+echo "ejecución de scriptgefeli.sh"
 
 fi
 let k = k + 1
