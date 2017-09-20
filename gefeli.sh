@@ -72,6 +72,13 @@ ssh root@${hosts[$k]} "yum -y install MariaDB-server MariaDB-client rsync wget"
 
 echo "MariaDb Server y Cliente instalados"
 
+mysql --user=root <<_EOF
+DELETE FROM mysql.user WHERE User='';
+DROP DATABASE IF EXISTS test;
+DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
+FLUSH PRIVILEGES;
+_EOF
+
 let k=k+1	
 done
 
@@ -239,8 +246,8 @@ done
 
 ########################################################
 sleep 2
-k=0
-ssh root@${hosts[$k]} "chmod +x scriptgefeli.sh"
+
+chmod +x scriptgefeli.sh"
 
 echo "permisos de ejecución de scriptgefeli.sh"
 
