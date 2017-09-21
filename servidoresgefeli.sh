@@ -88,22 +88,4 @@ ssh root@${hosts[$k]} "echo '
 ' >> /var/www/html/glpi/config/config_db.php"
 
 echo "fin de script :o"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 done
