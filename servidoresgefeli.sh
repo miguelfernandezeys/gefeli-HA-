@@ -5,7 +5,7 @@ exec &> instalacionservidores.log
 FILEHOST=/etc/hosts
 
 #leer archivos de propiedades
-file="./nodos.properties"
+file="./nodosserver.properties"
 
 k=0
 #comprueba la existencia del archivo nodos.properties
