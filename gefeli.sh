@@ -110,7 +110,7 @@ echo "inicia el servicio de MariaDB"
 sleep 3
 
 ssh root@${hosts[$k]} "mysql --user=root <<_EOF
-CREATE USER 'reply'@'%' IDENTIFIED BY 'reply';
+CREATE USER 'reply'@'localhost' IDENTIFIED BY 'reply';
 GRANT REPLICATION SLAVE ON *.* TO 'reply'@'%';
 FLUSH PRIVILEGES;
 FLUSH TABLES WITH READ LOCK;
@@ -224,8 +224,8 @@ stop slave;
 change master to master_host= '${hosts[0]}', master_user='reply', master_password='reply', master_log_file='$binMaster1', master_log_pos=$posMaster1;
 start slave;
 CREATE DATABASE glpi;
-CREATE USER 'glpi'@'%' IDENTIFIED BY 'glpi';
-GRANT ALL PRIVILEGES ON glpi TO 'glpi'@'%';
+CREATE USER 'glpi'@'localhost' IDENTIFIED BY 'glpi';
+grant all on *.* TO 'glpi'@'%' IDENTIFIED BY 'glpi';
 FLUSH PRIVILEGES;
 FLUSH TABLES WITH READ LOCK;
 _EOF
