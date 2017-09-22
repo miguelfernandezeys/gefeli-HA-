@@ -72,13 +72,6 @@ ssh root@${hosts[$k]} "yum -y install MariaDB-server MariaDB-client rsync wget"
 
 echo "MariaDb Server y Cliente instalados"
 
-mysql --user=root <<_EOF
-DELETE FROM mysql.user WHERE User='';
-DROP DATABASE IF EXISTS test;
-DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
-FLUSH PRIVILEGES;
-_EOF
-
 let k=k+1	
 done
 
@@ -111,6 +104,7 @@ sleep 3
 
 ssh root@${hosts[$k]} "mysql --user=root <<_EOF
 CREATE USER 'reply'@'localhost' IDENTIFIED BY 'reply';
+GRANT REPLICATION SLAVE ON *.* TO 'reply'@'localhost';
 GRANT REPLICATION SLAVE ON *.* TO 'reply'@'%';
 FLUSH PRIVILEGES;
 FLUSH TABLES WITH READ LOCK;
@@ -225,6 +219,7 @@ change master to master_host= '${hosts[0]}', master_user='reply', master_passwor
 start slave;
 CREATE DATABASE glpi;
 CREATE USER 'glpi'@'localhost' IDENTIFIED BY 'glpi';
+grant all on *.* TO 'glpi'@'localhost' IDENTIFIED BY 'glpi';
 grant all on *.* TO 'glpi'@'%' IDENTIFIED BY 'glpi';
 FLUSH PRIVILEGES;
 FLUSH TABLES WITH READ LOCK;
@@ -257,7 +252,7 @@ ssh root@${hosts[$k]} "./scriptgefeli.sh"
 
 echo "ejecución de scriptgefeli.sh"
 
-echo "FIN DE LA INSTALACIÓN!! :)"
+echo "FIN DE LA INSTALACIÓN!! :O"
 
 ####################################333
 
