@@ -247,8 +247,6 @@ echo "Variables POS: " $posMaster1 "y BIN: " $binMaster1
 
 sleep 2
 
-
-ssh root@${hosts[$k]} "
 mysql --user=root <<_EOF
 unlock tables;
 stop slave;
@@ -261,12 +259,10 @@ grant all on *.* TO 'glpi'@'%' IDENTIFIED BY 'glpi';
 FLUSH PRIVILEGES;
 FLUSH TABLES WITH READ LOCK;
 _EOF
-"
 
 ssh root@${hosts[$k]} "mysql glpi < glpi.sql"
 
 echo "base de datos restaurada"
-
 
 ########################################################
 sleep 2
