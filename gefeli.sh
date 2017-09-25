@@ -217,6 +217,43 @@ unlock tables;
 stop slave;
 change master to master_host= '${hosts[0]}', master_user='reply', master_password='reply', master_log_file='$binMaster1', master_log_pos=$posMaster1;
 start slave;
+_EOF
+"
+echo "Master host configurado"
+
+sleep 2 
+
+
+
+fi
+
+let k=k+1
+
+done
+
+systemctl restart mariadb.service
+
+
+#binlog y posición para replicación
+bin=$(ssh root@${hosts[1]} 'mysql -e "show master status;" | tail -n 1')
+
+binMaster1=$(echo $bin | awk {'print $1'})
+
+pos=$(ssh root@${hosts[1]} "mysql -e 'show master status;' | tail -n 1")
+
+posMaster1=$(echo $pos | awk {'print $2'})
+
+echo "Variables POS: " $posMaster1 "y BIN: " $binMaster1
+
+sleep 2
+
+
+ssh root@${hosts[$k]} "
+mysql --user=root <<_EOF
+unlock tables;
+stop slave;
+change master to master_host= '${hosts[1]}', master_user='reply', master_password='reply', master_log_file='$binMaster1', master_log_pos=$posMaster1;
+start slave;
 CREATE DATABASE glpi;
 CREATE USER 'glpi'@'localhost' IDENTIFIED BY 'glpi';
 grant all on *.* TO 'glpi'@'localhost' IDENTIFIED BY 'glpi';
@@ -225,19 +262,11 @@ FLUSH PRIVILEGES;
 FLUSH TABLES WITH READ LOCK;
 _EOF
 "
-echo "Master host configurado"
-
-sleep 2 
 
 ssh root@${hosts[$k]} "mysql glpi < glpi.sql"
 
 echo "base de datos restaurada"
 
-fi
-
-let k=k+1
-
-done
 
 ########################################################
 sleep 2
