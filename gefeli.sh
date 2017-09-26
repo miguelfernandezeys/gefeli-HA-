@@ -262,7 +262,7 @@ FLUSH PRIVILEGES;
 FLUSH TABLES WITH READ LOCK;
 _EOF
 
-ssh root@${hosts[$k]} "mysql glpi < glpi.sql"
+mysql glpi < glpi.sql
 
 echo "base de datos restaurada"
 
