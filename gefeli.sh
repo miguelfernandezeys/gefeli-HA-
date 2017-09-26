@@ -39,7 +39,6 @@ echo "comienza configuracion del host: " ${hosts[$k]}
 #scp -"$FILEHOST" root@${hosts[$k]}:/etc/
 #echo "Copia del archivo " $FILEHOST "en el host: " ${hosts[$k]}
 ssh root@${hosts[$k]} "sudo yum -y  groupinstall 'Development Tools'"
-
 echo "herramientas de desarrollo instaladas"
 #ssh root@${hosts[$k]} "sed 's/SELINUX=enforcing/SELINUX=disabled/g' -i ~/etc/selinux/config"
 #echo "SELINUX configurado correctamente "
@@ -72,6 +71,12 @@ ssh root@${hosts[$k]} "yum -y install MariaDB-server MariaDB-client rsync wget"
 
 echo "MariaDb Server y Cliente instalados"
 
+ssh root@${hosts[$k]} "systemctl enable mariadb.service"
+
+echo "MariaDb habilitado"
+
+ssh root@${hosts[$k]} "systemctl start mariadb.service"
+
 let k=k+1	
 done
 
@@ -83,16 +88,11 @@ if [  ${dns[$k]} = "master1" ]; then
 echo "INICIA LA CONFIGURACION DEL MASTER 1"
 
 sleep 3
+ssh root@${hosts[$k]} "systemctl stop mariadb.service"
 
 ssh root@${hosts[$k]} "sed 's/\[mysqld]/[mysqld]\nserver-id=10\nlog-bin=mysql-bin/g' -i /etc/my.cnf.d/server.cnf"
 
 echo "archivo server.cnf modificado"
-
-ssh root@${hosts[$k]} "systemctl enable mariadb.service"
-
-echo "servicio mariadb habilitado"
-#ssh root@${hosts[$k]} "mysql_secure_installation"
-
 
 sleep 3
 
@@ -132,6 +132,8 @@ scp mysql-db.sql root@${hosts[$k]}:/root/
 scp glpi.sql root@${hosts[$k]}:/root/
 
 scp scriptgefeli.sh root@${hosts[$k]}:/root/
+
+ssh root@${hosts[$k]} "systemctl stop mariadb.service"
 
 ssh root@${hosts[$k]} "sed 's/\[mysqld]/[mysqld]\nserver-id=20\nlog-bin=mysql-bin/g' -i /etc/my.cnf.d/server.cnf"
 
