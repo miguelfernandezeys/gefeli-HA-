@@ -105,6 +105,7 @@ sleep 3
 ssh root@${hosts[$k]} "mysql --user=root <<_EOF
 CREATE USER 'reply'@'localhost' IDENTIFIED BY 'reply';
 GRANT REPLICATION SLAVE ON *.* TO 'reply'@'localhost';
+CREATE USER 'reply'@'%' IDENTIFIED BY 'reply';
 GRANT REPLICATION SLAVE ON *.* TO 'reply'@'%';
 FLUSH PRIVILEGES;
 FLUSH TABLES WITH READ LOCK;
@@ -120,6 +121,13 @@ echo "Export de base de datos creado"
 
 sleep 2
 
+sleep 3
+
+ssh root@${hosts[$k]} "systemctl start mariadb.service"
+
+echo "Reinicia el servicio de MariaDB"
+
+sleep 2
 else
 echo "INICIA LA CONFIGURACION DEL MASTER 2"
 
@@ -145,7 +153,6 @@ ssh root@${hosts[$k]} "systemctl enable mariadb.service"
 
 echo "servicio mariadb habilitado"
 #ssh root@${hosts[$k]} "mysql_secure_installation"
-
 sleep 3
 
 ssh root@${hosts[$k]} "systemctl start mariadb.service"
@@ -158,8 +165,11 @@ ssh root@${hosts[$k]} "mysql mysql < mysql-db.sql"
 
 echo "Base de datos Importada"
 
-sleep 2 
 
+sleep 2 
+ssh root@${hosts[$k]} "systemctl restart mariadb.service"
+
+echo "Reinicio del servicio MariaDB"
 fi
 
 let k=k+1
@@ -169,12 +179,6 @@ k=0
 
 while [ $k -lt ${#hosts[@]} ];do
 if [  ${dns[$k]} = "master1" ]; then
-
-ssh root@${hosts[$k]} "systemctl restart mariadb.service"
-
-echo "Reinicio del servicio MariaDB"
-
-sleep 2
 
 #binlog y posición para replicación
 bin=$(ssh root@${hosts[1]} 'mysql -e "show master status;" | tail -n 1')
@@ -233,29 +237,9 @@ let k=k+1
 
 done
 
-systemctl restart mariadb.service
-
-
-#binlog y posición para replicación
-bin=$(ssh root@${hosts[1]} 'mysql -e "show master status;" | tail -n 1')
-
-binMaster1=$(echo $bin | awk {'print $1'})
-
-pos=$(ssh root@${hosts[1]} "mysql -e 'show master status;' | tail -n 1")
-
-posMaster1=$(echo $pos | awk {'print $2'})
-
-echo "Variables POS: " $posMaster1 "y BIN: " $binMaster1
-
-sleep 2
-
-mysql --user=root <<_EOF
-unlock tables;
-stop slave;
-change master to master_host= '${hosts[1]}', master_user='reply', master_password='reply', master_log_file='$binMaster1', master_log_pos=$posMaster1;
-start slave;
 CREATE DATABASE glpi;
 CREATE USER 'glpi'@'localhost' IDENTIFIED BY 'glpi';
+CREATE USER 'glpi'@'%' IDENTIFIED BY 'glpi';
 grant all on *.* TO 'glpi'@'localhost' IDENTIFIED BY 'glpi';
 grant all on *.* TO 'glpi'@'%' IDENTIFIED BY 'glpi';
 FLUSH PRIVILEGES;
@@ -279,7 +263,7 @@ ssh root@${hosts[$k]} "./scriptgefeli.sh"
 
 echo "ejecución de scriptgefeli.sh"
 
-echo "FIN DE LA INSTALACIÓN!! :O"
+echo "FIN DE LA INSTALACIÓN!!8O"
 
 ####################################333
 
